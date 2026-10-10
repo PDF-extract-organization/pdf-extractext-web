@@ -11,3 +11,7 @@ build/
 *.egg-info/
 .idea/
 .vscode/
+
+# CSS compilado: lo genera el Dockerfile (o npm run build:css en local)
+static/css/output.css
+node_modules/
