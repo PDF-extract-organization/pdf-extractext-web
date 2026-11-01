@@ -11,6 +11,7 @@ from app.application.errors import (
     ServiceTimeoutError,
     ServiceUnavailableError,
 )
+from app.application.interfaces.services import ServerDefaults, SummaryOptions
 from app.infrastructure.http_clients import (
     HttpExporterClient,
     HttpExtractorClient,
@@ -136,13 +137,62 @@ async def test_summarizer_envia_el_texto_y_devuelve_el_resumen():
     requests = []
     client = make(
         HttpSummarizerClient,
-        respond(200, {"summary": "Resumen", "model": "m", "tokens_used": 1}),
+        respond(200, {"summary": "Resumen", "model": "m", "tokens_used": 1, "truncated": False}),
         requests,
     )
 
-    assert await client.summarize("el texto") == "Resumen"
+    result = await client.summarize("el texto")
+
+    assert (result.text, result.truncated) == ("Resumen", False)
     assert str(requests[0].url) == "http://servicio.test/summarize"
     assert json.loads(requests[0].read()) == {"text": "el texto"}
+
+
+async def test_summarizer_envia_solo_los_ajustes_que_hay():
+    requests = []
+    client = make(HttpSummarizerClient, respond(200, {"summary": "R", "truncated": False}), requests)
+
+    await client.summarize("t", SummaryOptions(model="modelo/usuario", api_key="sk-u", max_tokens=1500))
+    await client.summarize("t", SummaryOptions(max_tokens=900))
+
+    assert json.loads(requests[0].read()) == {
+        "text": "t",
+        "model": "modelo/usuario",
+        "api_key": "sk-u",
+        "max_tokens": 1500,
+    }
+    assert json.loads(requests[1].read()) == {"text": "t", "max_tokens": 900}
+
+
+@pytest.mark.parametrize("body, truncated", [({"truncated": True}, True), ({}, False)])
+async def test_summarizer_lee_si_el_resumen_salio_cortado(body, truncated):
+    client = make(HttpSummarizerClient, respond(200, {"summary": "R", **body}))
+
+    assert (await client.summarize("t")).truncated is truncated
+
+
+async def test_summarizer_defaults_lee_los_parametros_del_servidor():
+    requests = []
+    client = make(
+        HttpSummarizerClient,
+        respond(
+            200,
+            {
+                "model": "modelo/servidor",
+                "max_tokens": 5000,
+                "max_tokens_limit": 8000,
+                "temperature": 0.3,
+                "max_prompt_chars": 12000,
+                "config_status": "ok",
+            },
+        ),
+        requests,
+    )
+
+    assert await client.defaults() == ServerDefaults(
+        model="modelo/servidor", max_tokens=5000, max_tokens_limit=8000
+    )
+    assert (requests[0].method, str(requests[0].url)) == ("GET", "http://servicio.test/parameters")
 
 
 # --- summaries ---
