@@ -49,11 +49,12 @@
                     <h2 class="text-xl font-bold text-white">Resumen:</h2>
                     <p id="result-title" class="text-sm text-white/50 mt-0.5"></p>
                 </div>
-                <button id="result-close" class="p-1.5 rounded-full hover:bg-white/20 transition-colors text-white/60 hover:text-white" aria-label="Close summary">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <a id="settings-link" href="/ajustes" class="p-1.5 rounded-full hover:bg-white/20 transition-colors text-white/60 hover:text-white" aria-label="Ajustes" title="Ajustes">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+                        <circle cx="12" cy="12" r="3"/>
                     </svg>
-                </button>
+                </a>
             </div>
 
             <div class="flex-1 overflow-y-auto scrollbar-thin" id="result-scroll">
@@ -61,6 +62,11 @@
                     Upload a PDF and generate a summary to see results here
                 </div>
                 <div id="result-container" style="display: none;">
+                    <div id="truncated-warning" style="display: none;" role="status" class="mb-4 bg-amber-500/10 border-l-4 border-amber-400 rounded-lg p-4 text-sm text-amber-100">
+                        <strong class="font-semibold">El resumen salió incompleto:</strong>
+                        el modelo se quedó sin tokens antes de terminar. Sube el máximo de tokens o elige otro modelo en
+                        <a href="/ajustes" class="underline hover:text-white">Ajustes</a>.
+                    </div>
                     <div id="result-content" class="prose prose-invert max-w-none text-base leading-relaxed text-white/80 break-words"></div>
                 </div>
                 <div id="error-container" style="display: none;" class="bg-red-500/10 border-l-4 border-red-500 rounded-lg p-4">
@@ -131,7 +137,7 @@
         const resultContent = document.getElementById('result-content');
         const resultPlaceholder = document.getElementById('result-placeholder');
         const resultTitle = document.getElementById('result-title');
-        const resultClose = document.getElementById('result-close');
+        const truncatedWarning = document.getElementById('truncated-warning');
         const downloadBtn = document.getElementById('download-btn');
         const errorContainer = document.getElementById('error-container');
         const errorMessage = document.getElementById('error-message');
@@ -145,13 +151,49 @@
 
         let currentSummaryId = null;
 
+        // Misma clave que escribe la página Ajustes. Vive solo en este navegador.
+        const SETTINGS_KEY = 'pdf_extractext_settings';
+        // El resumen abierto, para reabrirlo al volver de Ajustes
+        const CURRENT_SUMMARY_KEY = 'pdf_extractext_current_summary';
+
+        function loadSettings() {
+            try {
+                return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+            } catch {
+                return {};
+            }
+        }
+
+        // Solo los ajustes que el usuario cambió: lo que falte lo decide el servidor
+        function appendSettings(formData) {
+            const settings = loadSettings();
+            const model = (settings.models || []).find((m) => m.id === settings.selected);
+            if (model) {
+                formData.append('model', model.model);
+                formData.append('api_key', model.api_key);
+            }
+            if (settings.max_tokens) formData.append('max_tokens', settings.max_tokens);
+        }
+
+        function rememberCurrent(id) {
+            try {
+                if (id) sessionStorage.setItem(CURRENT_SUMMARY_KEY, id);
+                else sessionStorage.removeItem(CURRENT_SUMMARY_KEY);
+            } catch {
+                // Sin almacenamiento, simplemente no se reabre al volver
+            }
+        }
+
         // --- Estado del panel de resultado ---
 
-        // Único punto donde se pinta un resumen, venga de una subida o del historial
+        // Único punto donde se pinta un resumen, venga de una subida o del historial.
+        // `truncated` solo llega al generarlo: un resumen abierto del historial no lo trae.
         function renderResult(summary) {
             currentSummaryId = summary.id;
+            rememberCurrent(summary.id);
             resultTitle.textContent = summary.original_filename;
             resultContent.innerHTML = DOMPurify.sanitize(marked.parse(summary.summary_text));
+            truncatedWarning.style.display = summary.truncated === true ? 'block' : 'none';
             resultPlaceholder.style.display = 'none';
             resultContainer.style.display = 'block';
             errorContainer.style.display = 'none';
@@ -160,6 +202,7 @@
 
         function renderError(message) {
             currentSummaryId = null;
+            rememberCurrent(null);
             errorMessage.textContent = message;
             resultPlaceholder.style.display = 'none';
             resultContainer.style.display = 'none';
@@ -169,6 +212,7 @@
 
         function clearResult() {
             currentSummaryId = null;
+            rememberCurrent(null);
             resultContainer.style.display = 'none';
             errorContainer.style.display = 'none';
             resultPlaceholder.style.display = 'flex';
@@ -206,6 +250,7 @@
 
             const formData = new FormData();
             formData.append('file', file);
+            appendSettings(formData);
 
             try {
                 const response = await fetch('/api/summarize', { method: 'POST', body: formData });
@@ -221,8 +266,6 @@
                 submitBtn.textContent = 'Generate Summary';
             }
         });
-
-        resultClose.addEventListener('click', clearResult);
 
         downloadBtn.addEventListener('click', () => {
             if (currentSummaryId) exportSummary(currentSummaryId);
@@ -279,6 +322,21 @@
             }
         }
 
+        // Al volver de Ajustes, el resumen que se estaba viendo sigue abierto
+        async function reopenCurrent() {
+            let id = null;
+            try {
+                id = sessionStorage.getItem(CURRENT_SUMMARY_KEY);
+            } catch {
+                return;
+            }
+            if (!id) return;
+            const response = await fetch(`/api/summaries/${id}`).catch(() => null);
+            // Si ya no existe (se borró), se vuelve a la vista vacía sin mostrar error
+            if (response && response.ok) renderResult(await response.json());
+            else rememberCurrent(null);
+        }
+
         function exportSummary(id) {
             window.location.href = `/api/summaries/${id}/export`;
         }
@@ -304,6 +362,7 @@
         }
 
         loadHistory();
+        reopenCurrent();
     </script>
 </body>
 </html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajustes · PDF Summarizer</title>
+    <link rel="stylesheet" href="/static/css/output.css">
+</head>
+<body class="bg-slate-950 text-white font-sans min-h-screen">
+    <div class="fixed inset-0 bg-[url('/static/media/s2.png')] bg-cover bg-center bg-no-repeat">
+        <div class="absolute inset-0 bg-black/60"></div>
+    </div>
+
+    <div class="fixed top-[-15rem] left-[-10rem] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="fixed bottom-[-15rem] right-[-10rem] w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <main class="relative z-10 max-w-2xl mx-auto p-5 sm:py-10">
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 p-6 sm:p-8 flex flex-col gap-8">
+            <header class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <svg class="h-6 w-6 text-white/80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <h1 class="text-2xl font-bold">Ajustes</h1>
+                </div>
+                <a href="/" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-sm text-white/80 hover:text-white transition-colors">
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                    Volver
+                </a>
+            </header>
+
+            <p class="text-sm text-white/60">
+                Tus ajustes y tus API keys se guardan <strong class="text-white/80">solo en este navegador</strong>
+                y viajan con cada resumen que generes. No se guardan en el servidor.
+            </p>
+
+            <!-- Mensajes de estado: se rellenan con textContent -->
+            <p id="status" role="status" class="hidden text-sm rounded-lg p-3"></p>
+
+            <!-- Modelo -->
+            <section class="flex flex-col gap-3">
+                <label for="model-select" class="text-lg font-semibold">Modelo de IA</label>
+                <div class="flex gap-2">
+                    <select id="model-select" class="flex-1 min-w-0 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-white/50"></select>
+                    <button type="button" id="delete-model" class="hidden px-3 py-2 rounded-lg text-red-300 hover:text-white bg-red-500/10 hover:bg-red-500/30 border border-red-500/30 text-sm" title="Eliminar este modelo">
+                        Eliminar
+                    </button>
+                </div>
+                <p id="model-help" class="text-xs text-white/50"></p>
+
+                <button type="button" id="show-add-model" class="self-start text-sm text-blue-300 hover:text-white transition-colors">+ Añadir modelo</button>
+
+                <form id="add-model-form" class="hidden flex flex-col gap-3 p-4 rounded-xl bg-white/5 border border-white/10" autocomplete="off">
+                    <label class="flex flex-col gap-1 text-sm">
+                        <span class="text-white/70">Nombre (para reconocerlo en la lista)</span>
+                        <input id="new-name" required maxlength="60" class="px-3 py-2 rounded-lg bg-slate-900/80 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="Mi Llama gratis">
+                    </label>
+                    <label class="flex flex-col gap-1 text-sm">
+                        <span class="text-white/70">Modelo de OpenRouter</span>
+                        <input id="new-model" required class="px-3 py-2 rounded-lg bg-slate-900/80 border border-white/20 font-mono focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="meta-llama/llama-3.3-70b-instruct:free">
+                    </label>
+                    <label class="flex flex-col gap-1 text-sm">
+                        <span class="text-white/70">API key de OpenRouter</span>
+                        <input id="new-key" type="password" required autocomplete="new-password" class="px-3 py-2 rounded-lg bg-slate-900/80 border border-white/20 font-mono focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="sk-or-v1-...">
+                        <span class="text-xs text-white/40">Crea una gratis en
+                            <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">openrouter.ai/keys</a>.</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-semibold">Guardar modelo</button>
+                        <button type="button" id="cancel-add-model" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm">Cancelar</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Máximo de tokens -->
+            <section class="flex flex-col gap-2">
+                <label for="max-tokens" class="text-lg font-semibold">Máximo de tokens</label>
+                <input id="max-tokens" type="number" min="1" step="1" inputmode="numeric" class="w-48 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="Por defecto">
+                <p id="tokens-help" class="text-xs text-white/50">Vacío: se usa el valor del servidor.</p>
+                <p class="text-xs text-white/40">
+                    Los modelos que razonan gastan parte de estos tokens pensando. Si un resumen sale incompleto, súbelo.
+                </p>
+            </section>
+
+            <div class="flex flex-wrap gap-3 pt-2 border-t border-white/10">
+                <button type="button" id="save" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-lg transition-all duration-200 hover:ring-2 hover:ring-white/50">
+                    Guardar
+                </button>
+                <button type="button" id="reset" class="px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/80 hover:text-white font-semibold transition-colors">
+                    Restablecer valores del servidor
+                </button>
+            </div>
+            <p class="text-xs text-white/40 -mt-4">
+                Restablecer vuelve al modelo y a los tokens del servidor. Los modelos que añadiste se conservan; bórralos uno a uno si quieres quitar sus claves.
+            </p>
+        </div>
+    </main>
+
+    <script>
+        // Misma clave que lee la portada. Vive solo en este navegador.
+        const SETTINGS_KEY = 'pdf_extractext_settings';
+
+        const modelSelect = document.getElementById('model-select');
+        const modelHelp = document.getElementById('model-help');
+        const deleteModelBtn = document.getElementById('delete-model');
+        const showAddBtn = document.getElementById('show-add-model');
+        const addForm = document.getElementById('add-model-form');
+        const cancelAddBtn = document.getElementById('cancel-add-model');
+        const newName = document.getElementById('new-name');
+        const newModel = document.getElementById('new-model');
+        const newKey = document.getElementById('new-key');
+        const maxTokensInput = document.getElementById('max-tokens');
+        const tokensHelp = document.getElementById('tokens-help');
+        const saveBtn = document.getElementById('save');
+        const resetBtn = document.getElementById('reset');
+        const statusBox = document.getElementById('status');
+
+        // Valores del servidor (Consul o .env). null hasta cargarlos o si fallan
+        let defaults = null;
+
+        // --- Almacenamiento ---
+
+        function loadSettings() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+                return {
+                    models: Array.isArray(stored.models) ? stored.models : [],
+                    selected: stored.selected || null,
+                    max_tokens: stored.max_tokens || null,
+                };
+            } catch {
+                return { models: [], selected: null, max_tokens: null };
+            }
+        }
+
+        function storeSettings(settings) {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                return true;
+            } catch {
+                showStatus('Este navegador no deja guardar ajustes (modo privado o almacenamiento bloqueado).', 'error');
+                return false;
+            }
+        }
+
+        let settings = loadSettings();
+
+        // --- Pintado ---
+
+        function showStatus(message, kind = 'ok') {
+            statusBox.textContent = message;
+            statusBox.className = 'text-sm rounded-lg p-3 ' + (kind === 'error'
+                ? 'bg-red-500/10 border-l-4 border-red-500 text-red-200'
+                : 'bg-emerald-500/10 border-l-4 border-emerald-400 text-emerald-100');
+        }
+
+        function option(value, text) {
+            const el = document.createElement('option');
+            el.value = value;
+            el.textContent = text;
+            return el;
+        }
+
+        function renderModels() {
+            const serverLabel = defaults
+                ? `Por defecto del servidor (${defaults.model})`
+                : 'Por defecto del servidor';
+            modelSelect.replaceChildren(
+                option('', serverLabel),
+                ...settings.models.map((m) => option(m.id, `${m.name} · ${m.model}`)),
+            );
+            const exists = settings.models.some((m) => m.id === settings.selected);
+            modelSelect.value = exists ? settings.selected : '';
+            updateModelControls();
+        }
+
+        function updateModelControls() {
+            const custom = modelSelect.value !== '';
+            deleteModelBtn.classList.toggle('hidden', !custom);
+            modelHelp.textContent = custom
+                ? 'Se usará este modelo con su API key.'
+                : 'Se usará el modelo y la API key del servidor.';
+        }
+
+        function renderTokens() {
+            maxTokensInput.value = settings.max_tokens || '';
+            if (defaults) {
+                maxTokensInput.max = defaults.max_tokens_limit;
+                maxTokensInput.placeholder = String(defaults.max_tokens);
+                tokensHelp.textContent =
+                    `Vacío: se usa el del servidor (${defaults.max_tokens}). Máximo permitido: ${defaults.max_tokens_limit}.`;
+            }
+        }
+
+        // --- Acciones ---
+
+        modelSelect.addEventListener('change', updateModelControls);
+
+        showAddBtn.addEventListener('click', () => {
+            addForm.classList.remove('hidden');
+            showAddBtn.classList.add('hidden');
+            newName.focus();
+        });
+
+        function closeAddForm() {
+            addForm.reset();
+            addForm.classList.add('hidden');
+            showAddBtn.classList.remove('hidden');
+        }
+
+        cancelAddBtn.addEventListener('click', closeAddForm);
+
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const model = {
+                id: crypto.randomUUID(),
+                name: newName.value.trim(),
+                model: newModel.value.trim(),
+                api_key: newKey.value.trim(),
+            };
+            if (!model.name || !model.model || !model.api_key) {
+                showStatus('Completa el nombre, el modelo y la API key.', 'error');
+                return;
+            }
+            settings.models.push(model);
+            settings.selected = model.id;
+            if (storeSettings(settings)) {
+                closeAddForm();
+                renderModels();
+                showStatus(`Modelo "${model.name}" añadido y elegido.`);
+            }
+        });
+
+        deleteModelBtn.addEventListener('click', () => {
+            const model = settings.models.find((m) => m.id === modelSelect.value);
+            if (!model) return;
+            settings.models = settings.models.filter((m) => m.id !== model.id);
+            if (settings.selected === model.id) settings.selected = null;
+            if (storeSettings(settings)) {
+                renderModels();
+                showStatus(`Modelo "${model.name}" eliminado, con su API key.`);
+            }
+        });
+
+        // Vacío o un entero entre 1 y el tope del servidor
+        function readMaxTokens() {
+            const raw = maxTokensInput.value.trim();
+            if (raw === '') return { value: null };
+            const value = Number(raw);
+            if (!Number.isInteger(value) || value < 1) {
+                return { error: 'El máximo de tokens debe ser un número entero mayor que 0.' };
+            }
+            if (defaults && value > defaults.max_tokens_limit) {
+                return { error: `El máximo de tokens no puede pasar de ${defaults.max_tokens_limit}.` };
+            }
+            return { value };
+        }
+
+        saveBtn.addEventListener('click', () => {
+            const tokens = readMaxTokens();
+            if (tokens.error) {
+                showStatus(tokens.error, 'error');
+                maxTokensInput.focus();
+                return;
+            }
+            settings.selected = modelSelect.value || null;
+            settings.max_tokens = tokens.value;
+            if (storeSettings(settings)) showStatus('Ajustes guardados. Se usarán en el próximo resumen.');
+        });
+
+        resetBtn.addEventListener('click', () => {
+            settings.selected = null;
+            settings.max_tokens = null;
+            if (storeSettings(settings)) {
+                renderModels();
+                renderTokens();
+                showStatus('Se usarán el modelo y los tokens del servidor.');
+            }
+        });
+
+        // --- Arranque ---
+
+        async function loadDefaults() {
+            try {
+                const response = await fetch('/api/settings/defaults');
+                if (!response.ok) throw new Error();
+                defaults = await response.json();
+            } catch {
+                showStatus('No se pudieron cargar los valores del servidor. Puedes guardar tus ajustes igualmente.', 'error');
+            }
+            renderModels();
+            renderTokens();
+        }
+
+        renderModels();
+        renderTokens();
+        loadDefaults();
+    </script>
+</body>
+</html>
