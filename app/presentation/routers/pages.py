@@ -1,4 +1,4 @@
-"""Portada y health propio del contenedor."""
+"""Páginas de la interfaz y health propio del contenedor."""
 
 from pathlib import Path
 
@@ -7,15 +7,24 @@ from fastapi.responses import HTMLResponse
 
 from app.presentation.schemas import HealthResponse
 
-TEMPLATE = Path(__file__).parent.parent / "templates" / "index.html"
+TEMPLATES = Path(__file__).parent.parent / "templates"
 
 router = APIRouter()
 
 
+def _page(name: str) -> str:
+    # Codificación explícita: no depende del sistema operativo (en Windows no es UTF-8)
+    return (TEMPLATES / name).read_text(encoding="utf-8")
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index():
-    # Codificación explícita: no depende del sistema operativo (en Windows no es UTF-8)
-    return TEMPLATE.read_text(encoding="utf-8")
+    return _page("index.html")
+
+
+@router.get("/ajustes", response_class=HTMLResponse)
+async def ajustes():
+    return _page("ajustes.html")
 
 
 @router.get("/health", response_model=HealthResponse)

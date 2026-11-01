@@ -9,10 +9,15 @@ from app.application.interfaces.services import (
     ExporterClient,
     ExtractedText,
     ExtractorClient,
+    GeneratedSummary,
+    ServerDefaults,
     StoredSummary,
     SummariesClient,
     SummarizerClient,
+    SummaryOptions,
 )
+
+DEFAULTS = ServerDefaults(model="modelo/servidor", max_tokens=5000, max_tokens_limit=8000)
 
 
 class FakeExtractor(ExtractorClient):
@@ -31,15 +36,29 @@ class FakeExtractor(ExtractorClient):
 
 
 class FakeSummarizer(SummarizerClient):
-    def __init__(self, summary="# Resumen\n\nUn **resumen**.", error=None, healthy=True):
+    def __init__(
+        self,
+        summary="# Resumen\n\nUn **resumen**.",
+        error=None,
+        healthy=True,
+        truncated=False,
+    ):
         self._summary, self._error, self._healthy = summary, error, healthy
+        self._truncated = truncated
         self.received: list[str] = []
+        self.options: list[SummaryOptions] = []
 
-    async def summarize(self, text: str) -> str:
+    async def summarize(self, text: str, options: SummaryOptions = SummaryOptions()) -> GeneratedSummary:
         self.received.append(text)
+        self.options.append(options)
         if self._error:
             raise self._error
-        return self._summary
+        return GeneratedSummary(text=self._summary, truncated=self._truncated)
+
+    async def defaults(self) -> ServerDefaults:
+        if self._error:
+            raise self._error
+        return DEFAULTS
 
     async def is_healthy(self) -> bool:
         return self._healthy
