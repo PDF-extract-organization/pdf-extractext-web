@@ -1,6 +1,7 @@
 """Caso de uso: coordinar los servicios para resumir, consultar, borrar y exportar."""
 
 import asyncio
+from dataclasses import dataclass
 from pathlib import PurePath
 from typing import BinaryIO
 
@@ -8,10 +9,19 @@ from app.application.interfaces.services import (
     ExportedDocument,
     ExporterClient,
     ExtractorClient,
+    ServerDefaults,
     StoredSummary,
     SummariesClient,
     SummarizerClient,
+    SummaryOptions,
 )
+
+
+@dataclass(frozen=True)
+class NewSummary:
+    summary: StoredSummary
+    # No se guarda en summaries: solo sirve para avisar al usuario al generarlo
+    truncated: bool
 
 
 class Orchestrator:
@@ -27,11 +37,18 @@ class Orchestrator:
         self._summaries = summaries
         self._exporter = exporter
 
-    async def summarize_pdf(self, file: BinaryIO, filename: str) -> StoredSummary:
+    async def summarize_pdf(
+        self, file: BinaryIO, filename: str, options: SummaryOptions = SummaryOptions()
+    ) -> NewSummary:
         # Si un paso falla, su error se propaga y los siguientes no se ejecutan
         extracted = await self._extractor.extract(file, filename)
-        summary = await self._summarizer.summarize(extracted.text)
-        return await self._summaries.create(filename, summary)
+        generated = await self._summarizer.summarize(extracted.text, options)
+        # Se guarda solo el texto: los ajustes (y la API key) no salen de esta petición
+        stored = await self._summaries.create(filename, generated.text)
+        return NewSummary(summary=stored, truncated=generated.truncated)
+
+    async def server_defaults(self) -> ServerDefaults:
+        return await self._summarizer.defaults()
 
     async def list_summaries(self, limit: int) -> list[StoredSummary]:
         return await self._summaries.list(limit)

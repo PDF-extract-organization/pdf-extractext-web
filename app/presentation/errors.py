@@ -1,6 +1,7 @@
 """Traducción a HTTP de los errores de los servicios, en un solo sitio para toda la API."""
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.application.errors import (
@@ -8,6 +9,15 @@ from app.application.errors import (
     ServiceTimeoutError,
     ServiceUnavailableError,
 )
+
+# FastAPI devuelve en cada error el `input` recibido, que puede llevar la API key del
+# usuario. Solo se devuelve dónde y qué falló.
+SAFE_VALIDATION_FIELDS = ("type", "loc", "msg")
+
+
+async def _validation(request: Request, error: RequestValidationError) -> JSONResponse:
+    details = [{k: e[k] for k in SAFE_VALIDATION_FIELDS if k in e} for e in error.errors()]
+    return JSONResponse(status_code=422, content={"detail": details})
 
 
 async def _downstream(request: Request, error: DownstreamError) -> JSONResponse:
@@ -36,3 +46,4 @@ def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DownstreamError, _downstream)
     app.add_exception_handler(ServiceUnavailableError, _unavailable)
     app.add_exception_handler(ServiceTimeoutError, _timeout)
+    app.add_exception_handler(RequestValidationError, _validation)

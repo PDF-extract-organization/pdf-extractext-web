@@ -21,9 +21,12 @@ from app.application.interfaces.services import (
     ExporterClient,
     ExtractedText,
     ExtractorClient,
+    GeneratedSummary,
+    ServerDefaults,
     StoredSummary,
     SummariesClient,
     SummarizerClient,
+    SummaryOptions,
 )
 
 HEALTH_TIMEOUT_SECONDS = 2.0
@@ -103,9 +106,26 @@ class HttpExtractorClient(_ServiceClient, ExtractorClient):
 class HttpSummarizerClient(_ServiceClient, SummarizerClient):
     name = "summarizer"
 
-    async def summarize(self, text: str) -> str:
-        response = await self._request("POST", "/summarize", json={"text": text})
-        return response.json()["summary"]
+    async def summarize(
+        self, text: str, options: SummaryOptions = SummaryOptions()
+    ) -> GeneratedSummary:
+        # Solo los ajustes con valor: lo que falte lo decide summarizer (Consul o .env)
+        settings = {
+            "model": options.model,
+            "api_key": options.api_key,
+            "max_tokens": options.max_tokens,
+        }
+        body = {"text": text} | {k: v for k, v in settings.items() if v is not None}
+        data = (await self._request("POST", "/summarize", json=body)).json()
+        return GeneratedSummary(text=data["summary"], truncated=data.get("truncated", False))
+
+    async def defaults(self) -> ServerDefaults:
+        data = (await self._request("GET", "/parameters")).json()
+        return ServerDefaults(
+            model=data["model"],
+            max_tokens=data["max_tokens"],
+            max_tokens_limit=data["max_tokens_limit"],
+        )
 
 
 class HttpSummariesClient(_ServiceClient, SummariesClient):

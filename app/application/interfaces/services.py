@@ -1,7 +1,7 @@
 """Puertos de los cuatro servicios. El orquestador no sabe que hablan HTTP."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import BinaryIO
 
 
@@ -25,6 +25,33 @@ class ExportedDocument:
     content: bytes
 
 
+@dataclass(frozen=True)
+class SummaryOptions:
+    """Ajustes del usuario (página Ajustes). Lo que falte lo pone summarizer: Consul o .env."""
+
+    model: str | None = None
+    # repr=False: que la clave no salga si el objeto acaba en un log
+    api_key: str | None = field(default=None, repr=False)
+    max_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class GeneratedSummary:
+    text: str
+    # El modelo paró por max_tokens: el resumen está incompleto
+    truncated: bool
+
+
+@dataclass(frozen=True)
+class ServerDefaults:
+    """Lo que usa summarizer cuando el usuario no elige nada."""
+
+    model: str
+    max_tokens: int
+    # Máximo que acepta max_tokens en una petición
+    max_tokens_limit: int
+
+
 class HealthCheckable(ABC):
     @abstractmethod
     async def is_healthy(self) -> bool: ...
@@ -37,8 +64,13 @@ class ExtractorClient(HealthCheckable):
 
 class SummarizerClient(HealthCheckable):
     @abstractmethod
-    async def summarize(self, text: str) -> str:
-        """Devuelve el resumen en Markdown."""
+    async def summarize(
+        self, text: str, options: SummaryOptions = SummaryOptions()
+    ) -> GeneratedSummary:
+        """El resumen en Markdown. Solo se envían los ajustes que tengan valor."""
+
+    @abstractmethod
+    async def defaults(self) -> ServerDefaults: ...
 
 
 class SummariesClient(HealthCheckable):
